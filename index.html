@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Modern BMI & Calorie Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ===== Global ===== */
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'SF Pro', 'Roboto', sans-serif; }
+body {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 20px;
+    background: linear-gradient(145deg, #e0eafc, #cfdef3);
+    transition: 0.3s;
+    color: #333;
+}
+
+/* ===== Container ===== */
+.container {
+    width: 100%;
+    max-width: 600px;
+    padding: 30px;
+    border-radius: 25px;
+    backdrop-filter: blur(20px);
+    background: rgba(255, 255, 255, 0.6);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    transition: 0.3s;
+}
+
+/* ===== Glass-Style Heading ===== */
+h1 {
+    text-align: center;
+    margin-bottom: 25px;
+    font-weight: 700;
+    font-size: 2em;
+    color: #1a1a1a;
+    background: rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    padding: 15px 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: 0.3s;
+}
+body.dark h1 { color: #eee; background: rgba(40,40,60,0.4); }
+
+/* ===== Unit Switcher ===== */
+.unit-switcher {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 20px;
+    font-weight: 500;
+    color: #555;
+}
+.unit-switcher input { margin-right: 5px; }
+
+/* ===== Inputs ===== */
+.inputs, .calories-input { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+input[type="number"], select {
+    padding: 12px;
+    border-radius: 15px;
+    border: 1px solid rgba(0,0,0,0.1);
+    font-size: 16px;
+    text-align: center;
+    background: rgba(255,255,255,0.8);
+    transition: 0.3s;
+}
+input[type="number"]:focus, select:focus {
+    border: 2px solid #4facfe;
+    outline: none;
+    background: rgba(255,255,255,0.95);
+}
+
+/* ===== Buttons ===== */
+button {
+    padding: 12px 20px;
+    border-radius: 15px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s;
+    background: linear-gradient(135deg,#4facfe,#00f2fe);
+    color: white;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+}
+button:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
+.reset-btn { background: linear-gradient(135deg,#f56a6a,#f44336); }
+.reset-btn:hover { transform: translateY(-2px); }
+
+/* ===== Results ===== */
+.result p {
+    font-size: 16px;
+    line-height: 1.5;
+    margin: 8px 0;
+}
+#bmiValue { font-size: 34px; font-weight: 700; transition: 0.3s; }
+#bmiCategory { font-size: 18px; font-weight: 600; }
+#bmiAdvice { margin-top: 5px; font-size: 15px; color: #555; }
+#newWeight, #goalCalories, #projection { font-weight: 600; }
+
+/* ===== Graph ===== */
+canvas {
+    margin-top: 20px;
+    border-radius: 20px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+    background: rgba(255,255,255,0.8);
+    width: 100% !important;
+    height: auto !important;
+}
+
+/* ===== Dark Mode ===== */
+body.dark {
+    background: linear-gradient(145deg, #0f111a, #1a1c2c);
+    color: #ddd;
+}
+body.dark .container { background: rgba(20,20,30,0.7); }
+body.dark input, body.dark select { background: rgba(30,30,50,0.7); border:1px solid rgba(255,255,255,0.2); color:#ddd; }
+body.dark canvas { border: 1px solid rgba(255,255,255,0.2); }
+body.dark #bmiAdvice { color: #ccc; }
+
+/* ===== Responsive ===== */
+@media (max-width: 650px) {
+    .container { padding: 20px; }
+    h1 { font-size: 1.8em; padding: 12px 15px; }
+    button { padding: 10px 15px; font-size: 14px; }
+    input[type="number"], select { font-size: 14px; padding: 10px; }
+    #bmiValue { font-size: 28px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>BMI & Calorie Tracker</h1>
+
+<button id="darkModeBtn">Toggle Dark/Light Mode</button>
+
+<div class="unit-switcher">
+<label><input type="radio" name="unit" value="metric" checked> Metric (kg, cm)</label>
+<label><input type="radio" name="unit" value="imperial"> Imperial (lbs, in)</label>
+</div>
+
+<div class="inputs">
+  <select id="gender">
+    <option value="" selected disabled>Select Gender</option>
+    <option value="male">Male</option>
+    <option value="female">Female</option>
+  </select>
+
+  <input type="number" id="age" placeholder="Age">
+  <input type="number" id="height" placeholder="Height (cm)">
+  <input type="number" id="weight" placeholder="Weight (kg)">
+
+  <select id="activity">
+    <option value="" selected disabled>Select Activity Level</option>
+    <option value="sedentary">Sedentary (little/no exercise)</option>
+    <option value="light">Light (1-3 days/week)</option>
+    <option value="moderate">Moderate (3-5 days/week)</option>
+    <option value="active">Active (6-7 days/week)</option>
+    <option value="very">Very active (hard exercise daily)</option>
+  </select>
+</div>
+
+<button id="calculateBtn">Calculate BMI & Calories</button>
+<button id="resetBtn" class="reset-btn">Reset</button>
+
+<div class="result">
+<h2>Your BMI:</h2>
+<p id="bmiValue">--</p>
+<p id="bmiCategory">--</p>
+<p id="bmiAdvice">--</p>
+<p id="newWeight">Estimated Weight: --</p>
+<p id="goalCalories">Calories for your goal: --</p>
+<p id="projection">30-Day Projection: --</p>
+</div>
+
+<div class="calories-input">
+<h3>Daily Calories Tracker</h3>
+<input type="number" id="calories" placeholder="Calories eaten today">
+<button id="logCaloriesBtn">Log Calories</button>
+</div>
+
+<canvas id="weightChart" width="500" height="250"></canvas>
+</div>
+
+<script>
+const weightInput=document.getElementById('weight');
+const heightInput=document.getElementById('height');
+const ageInput=document.getElementById('age');
+const genderInput=document.getElementById('gender');
+const activityInput=document.getElementById('activity');
+const calculateBtn=document.getElementById('calculateBtn');
+const resetBtn=document.getElementById('resetBtn');
+const bmiValue=document.getElementById('bmiValue');
+const bmiCategory=document.getElementById('bmiCategory');
+const bmiAdvice=document.getElementById('bmiAdvice');
+const newWeightDisplay=document.getElementById('newWeight');
+const goalCaloriesDisplay=document.getElementById('goalCalories');
+const projectionDisplay=document.getElementById('projection');
+const unitSwitcher=document.getElementsByName('unit');
+const caloriesInput=document.getElementById('calories');
+const logCaloriesBtn=document.getElementById('logCaloriesBtn');
+const ctx=document.getElementById('weightChart').getContext('2d');
+const darkModeBtn=document.getElementById('darkModeBtn');
+
+let weightHistory=[]; 
+let dayCount=1;
+let currentWeight=0;
+let heightValue=0;
+let unitType='metric';
+let maintenanceCalories=2000;
+
+darkModeBtn.addEventListener('click',()=>document.body.classList.toggle('dark'));
+
+function getSelectedUnit(){ for(const unit of unitSwitcher) if(unit.checked) return unit.value; return 'metric'; }
+function calculateBMR(weight,height,age,gender){
+    return gender==='male'? 88.362 + (13.397*weight) + (4.799*height) - (5.677*age)
+    : 447.593 + (9.247*weight) + (3.098*height) - (4.330*age);
+}
+function activityMultiplier(level){
+    switch(level){
+        case 'sedentary': return 1.2;
+        case 'light': return 1.375;
+        case 'moderate': return 1.55;
+        case 'active': return 1.725;
+        case 'very': return 1.9;
+        default: return 1.2;
+    }
+}
+
+function updateBMI(weight){
+    let bmi = unitType==='metric'? weight/((heightValue/100)**2) : (weight/(heightValue**2))*703;
+    bmi = parseFloat(bmi.toFixed(1));
+    bmiValue.textContent=bmi;
+
+    let category='',color='',advice='';
+    const age=parseInt(ageInput.value), gender=genderInput.value;
+
+    if(bmi < 18.5){ category='Underweight'; color='#2196F3'; advice='Eat nutrient-rich foods, add healthy calories, strength training.';}
+    else if(bmi >= 18.5 && bmi < 25){ category='Normal'; color='#4CAF50'; advice='Maintain lifestyle with balanced diet and exercise.';}
+    else if(bmi >= 25 && bmi < 30){ category='Overweight'; color='#FFC107'; advice='Reduce calories, eat more veggies, increase physical activity.';}
+    else { category='Obese'; color='#F44336'; advice='Consult healthcare professional, focus on healthy diet and exercise.';}
+
+    if(age && age<18) advice += ' Under 18, consult guardian/healthcare.';
+    if(gender==='female') advice += ' Ensure adequate iron and calcium intake.';
+
+    bmiCategory.textContent=category;
+    bmiValue.style.color=color;
+    bmiAdvice.textContent=advice;
+    newWeightDisplay.textContent=`Estimated Weight: ${weight.toFixed(2)} kg`;
+
+    const loseCalories=Math.round(maintenanceCalories-500);
+    const maintainCalories=Math.round(maintenanceCalories);
+    const gainCalories=Math.round(maintenanceCalories+500);
+    goalCaloriesDisplay.innerHTML=`Goal Calories:<br>Lose: ${loseCalories} kcal/day<br>Maintain: ${maintainCalories} kcal/day<br>Gain: ${gainCalories} kcal/day`;
+
+    const loseKg=(loseCalories-maintenanceCalories)*30/7700;
+    const maintainKg=(maintainCalories-maintenanceCalories)*30/7700;
+    const gainKg=(gainCalories-maintenanceCalories)*30/7700;
+    projectionDisplay.innerHTML=`30-Day Projection:<br>Lose: ${(currentWeight+loseKg).toFixed(2)} kg<br>Maintain: ${(currentWeight+maintainKg).toFixed(2)} kg<br>Gain: ${(currentWeight+gainKg).toFixed(2)} kg`;
+}
+
+function calculateBMI(){
+    const weight=parseFloat(weightInput.value);
+    const height=parseFloat(heightInput.value);
+    const age=parseInt(ageInput.value);
+    const gender=genderInput.value;
+    const activity=activityInput.value;
+    unitType=getSelectedUnit();
+    if(!weight||!height||!age||!gender||!activity){ alert('Enter all details!'); return; }
+
+    currentWeight=weight;
+    heightValue=height;
+    maintenanceCalories=Math.round(calculateBMR(currentWeight,heightValue,age,gender)*activityMultiplier(activity));
+    weightHistory=[{day:dayCount, weight:currentWeight}];
+    updateBMI(currentWeight);
+    drawChart();
+}
+
+function resetCalculator(){
+    weightInput.value=''; heightInput.value=''; ageInput.value=''; genderInput.value=''; activityInput.value='';
+    caloriesInput.value='';
+    bmiValue.textContent='--'; bmiCategory.textContent='--'; bmiAdvice.textContent='--';
+    newWeightDisplay.textContent='Estimated Weight: --';
+    goalCaloriesDisplay.textContent='Calories for your goal: --';
+    projectionDisplay.textContent='30-Day Projection: --';
+    weightHistory=[]; dayCount=1; currentWeight=0; maintenanceCalories=2000;
+    drawChart();
+}
+
+function logCalories(){
+    const calories=parseFloat(caloriesInput.value);
+    if(!calories){ alert('Enter calories!'); return; }
+    const weightChange=(calories-maintenanceCalories)/7700; 
+    currentWeight=parseFloat((currentWeight+weightChange).toFixed(2));
+    dayCount++;
+    weightHistory.push({day:dayCount, weight:currentWeight});
+    updateBMI(currentWeight);
+    drawChart();
+    caloriesInput.value='';
+}
+
+function drawChart(){
+    ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);
+    if(weightHistory.length===0) return;
+    ctx.beginPath();
+    ctx.moveTo(40,10); ctx.lineTo(40,230); ctx.lineTo(490,230);
+    ctx.strokeStyle='#333'; ctx.lineWidth=2; ctx.stroke();
+    let weights=weightHistory.map(e=>e.weight);
+    let minW=Math.min(...weights)-1, maxW=Math.max(...weights)+1;
+    const under=18.5*((heightValue/100)**2);
+    const normal=24.9*((heightValue/100)**2);
+    const overweight=29.9*((heightValue/100)**2);
+    function getY(weight){ return 230 - ((weight-minW)/(maxW-minW))*220; }
+    ctx.fillStyle='rgba(33,150,243,0.1)'; ctx.fillRect(40,getY(under),450,getY(minW)-getY(under));
+    ctx.fillStyle='rgba(76,175,80,0.1)'; ctx.fillRect(40,getY(normal),450,getY(under)-getY(normal));
+    ctx.fillStyle='rgba(255,193,7,0.1)'; ctx.fillRect(40,getY(overweight),450,getY(normal)-getY(overweight));
+    ctx.fillStyle='rgba(244,67,54,0.1)'; ctx.fillRect(40,getY(maxW),450,getY(overweight)-getY(maxW));
+    for(let i=1;i<weightHistory.length;i++){
+        let x1=40+(450/(weightHistory.length-1))*(i-1);
+        let y1=getY(weightHistory[i-1].weight);
+        let x2=40+(450/(weightHistory.length-1))*i;
+        let y2=getY(weightHistory[i].weight);
+        ctx.beginPath();
+        ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+        ctx.strokeStyle=(weightHistory[i].weight>=weightHistory[i-1].weight)?'#4CAF50':'#F44336';
+        ctx.lineWidth=2; ctx.stroke();
+    }
+    weightHistory.forEach((point,i)=>{
+        let x=40+(450/(weightHistory.length-1))*i;
+        let y=getY(point.weight);
+        ctx.fillStyle='#2196F3';
+        ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fill();
+    });
+    ctx.fillStyle='#333'; ctx.font='12px Arial';
+    ctx.fillText(`Min: ${minW.toFixed(1)} kg`,10,230);
+    ctx.fillText(`Max: ${maxW.toFixed(1)} kg`,10,20);
+}
+
+calculateBtn.addEventListener('click',calculateBMI);
+resetBtn.addEventListener('click',resetCalculator);
+logCaloriesBtn.addEventListener('click',logCalories);
+</script>
+</body>
+</html>
